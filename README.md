@@ -7,8 +7,8 @@
 KBot - Telegram-бот на мові програмування Golang
 KBot є Telegram-ботом, написаним на мові програмування Golang, який може відповідати на текстові повідомлення та згодом буде виконувати різноманітні команди.
 ## Посилання на бот
- <i class="fa fa-telegram" aria-hidden="true"></i>
- https://t.me/matvrus_bot
+
+ ✉️ https://t.me/matvrus_bot
 ## Встановленя
 
 
