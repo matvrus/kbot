@@ -48,43 +48,6 @@ https://t.me/matvrus_bot
 
 ## Usage/Examples
 
-
-Звучить чудово! Я можу допомогти з цим. Ось приклад README з використанням емоджі та кольорів. Ви можете використовувати його як основу та змінювати за своїм бажанням:
-<div align="center">
-KBot 🤖
-
-GitHub release (latest by date)
-GitHub go.mod Go version
-GitHub
-</div>
-
-KBot is a simple Telegram bot written in Go using the telebot library and cobra framework.
-🚀 Getting started
-
-To get started with KBot, follow these steps:
-
-    Clone the repository and navigate to the project directory:
-
-bash
-
-git clone https://github.com/matvrus/kbot.git && cd kbot
-
-    Install the necessary dependencies:
-
-go
-
-go mod download
-
-    Create a Telegram bot using BotFather.
-
-    Save your bot token to the TELE_TOKEN environment variable:
-
-arduino
-
-export TELE_TOKEN=<your_bot_token>
-
-
-
 🤖To run Kbot, set the TELE_TOKEN environment variable to your Telegram bot token, and then run the following command
 
 ./kbot start
