@@ -5,11 +5,13 @@
 replicaCount: 1
 
 image:
-  repository: matvrus
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.0.6-b95a501"
+  repository: "matvrus"
+  tag: "v1.0.5-b95a501"
+  arch: amd64
 
 secret:
-  name: kbot
-  tokenKey: token
-  tokenName: TELE_TOKEN
+  name: "kbot"
+  tokenKey: "token"
+  tokenName: "TELE_TOKEN"
+securityContext:
+  privileged: true
