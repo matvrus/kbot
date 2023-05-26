@@ -6,7 +6,7 @@ replicaCount: 1
 image:
   registry: "ghcr.io"
   repository: "matvrus"
-  tag: ""
+  tag: "v1.0.0-5af43a9"
   os: "linux"
   arch: "amd64"
 secret:
