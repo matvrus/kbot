@@ -39,7 +39,7 @@ jobs:
         env:
           APP: "kbot"
           REGISTRY: ${{ secrets.DOCKERHUB_USERNAME }}
-          VERSION: ${{ shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD) }}
+          VERSION: ${{ github.sha }}
           TARGETOS: linux #linux darwin windows
           TARGETARCH: ${{ env.TARGETARCH }}
         run: make image push TARGETARCH=$TARGETARCH
