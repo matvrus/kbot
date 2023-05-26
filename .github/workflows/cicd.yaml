@@ -4,7 +4,6 @@ on: push
 
 env:
   APP: kbot
-  VERSION: ${{ shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD) }}
   TARGETARCH: amd64
   REGISTRY: ghcr.io
   REPOSITORY: ${{ github.actor }} # matvrus
