@@ -1,17 +1,25 @@
 name: KBOT-CICD
 
-on: push
+on:
+  push:
+    branches:
+      - "develop"
 
 env:
   APP: kbot
-  TARGETARCH: amd64
   REGISTRY: ghcr.io
   REPOSITORY: ${{ github.actor }} # matvrus
+  TARGETOS: linux #linux darwin windows
+  TARGETARCH: amd64 #amd64 arm64
+  HELM_CHART: helm
+  GH_TOKEN: ${{ secrets.GIT_TOKEN }}
 
 jobs:
   ci:
     name: CI
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
 
     steps:
       - name: Checkout
