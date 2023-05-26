@@ -6,7 +6,8 @@ replicaCount: 1
 image:
   registry: "ghcr.io"
   repository: "matvrus"
-  tag: ""
+  tag: "v1.0.0-aac59f3"
+  os: "linux"
   arch: "amd64"
 secret:
   name: "kbot"
