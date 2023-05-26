@@ -7,6 +7,7 @@ on:
 
 env:
   TARGETARCH: amd64
+  REGISTRY: ghcr.io/${{ github.repository }}
 
 jobs:
   ci:
