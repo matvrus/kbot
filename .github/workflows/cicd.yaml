@@ -4,7 +4,8 @@ on: push
 
 env:
   TARGETARCH: amd64
-  REGISTRY: ghcr.io/${{ github.repository }}
+  REGISTRY: ghcr.io
+  REPOSITORY: ${{ github.actor }} # matvrus
 
 jobs:
   ci:
