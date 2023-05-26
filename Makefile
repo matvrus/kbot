@@ -25,6 +25,9 @@ image:
 push:
 	docker push ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
 
+package:
+	docker build -t ghcr.io/matvrus/kbot:${VERSION}-${TARGETARCH} . --build-arg TARGETARCH=${TARGETARCH}
+
 clean:
 	rm -rf kbot
 	docker rmi ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
