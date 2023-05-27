@@ -1,5 +1,6 @@
 APP=$(shell basename $(shell git remote get-url origin))
 REGISTRY := matvrus
+REGISTRYDOC := matvrus
 VERSION=$(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
 TARGETOS=linux #linux darwin windows
 TARGETARCH=arm64 #amd64 arm64
@@ -24,6 +25,12 @@ image:
 
 push:
 	docker push ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
+	
+pushdoc:
+	docker push ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH}
+
+imagedoc:
+	docker build . -t ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH} --build-arg CGO_ENABLED=${CGO_ENABLED} --build-arg TARGETARCH=${ARCH} --build-arg TARGETOS=${TOS}
 
 clean:
 	rm -rf kbot
