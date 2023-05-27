@@ -20,11 +20,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure Git User
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-
       - name: Run test
         run: make test
 
@@ -56,18 +51,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
-      - run: echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+    - run: echo "VERION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - uses: mikefarah/yq@v4
-        with:
-          args: yq e '.image.tag=env(VERSION) | .image.arch=env(TARGETARCH)' -i helm/values.yaml
+    - uses: mikefarah/yq@master
+      with:
+        cmd: yq -i '.image.tag=strenv(VERSION) | .image.arch=strenv(TARGETARCH)' helm/values.yaml
 
-      - run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git commit -am "Update version to $VERSION"
-          git push
+    - run: |
+        git config user.name "github-actions"
+        git config user.email github-actions@github.com
+        git commit -am "update version $VERSION"
+        git push
