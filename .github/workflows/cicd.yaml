@@ -37,10 +37,10 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to the Container registry
-        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        uses: docker/login-action@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REPOSITORY }}
           password: ${{ secrets.GIT_TOKEN }}
 
       - name: Build&Push
@@ -50,7 +50,8 @@ jobs:
           REPOSITORY: ${{ env.REPOSITORY }}
           TARGETOS: ${{ env.TARGETOS }}
           TARGETARCH: ${{ env.TARGETARCH }}
-        run: make image push TARGETARCH=$TARGETARCH
+        run: make image push
+
       - name: Clean
         run: make clean TARGETARCH=$TARGETARCH
 
@@ -63,6 +64,8 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Set env.repository to lowercase
+      run: echo "REPOSITORY=${REPOSITORY,,}" >> $GITHUB_ENV
     - run: 
         echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
         echo "REPOSITORY=${REPOSITORY,,}" >> $GITHUB_ENV
