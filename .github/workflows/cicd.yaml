@@ -7,7 +7,7 @@ on:
 
 env:
   ARCH: amd64
-  REGISTRY: ghcr.io/${{ github.repository }}
+  REGISTRY: ghcr.io/matvrus
 
 jobs:
   ci:
