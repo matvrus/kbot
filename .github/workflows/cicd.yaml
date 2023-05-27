@@ -43,7 +43,7 @@ jobs:
         run: make imagedoc pushdoc ARCH=$ARCH REGISTRYDOC=$REGISTRYDOC
 
       - name: Clean
-        run: make clean ARCH=$ARCH REGISTRY=$REGISTRY
+        run: make clean TARGETARCH=$TARGETARCH
 
   cd:
     name: CD
