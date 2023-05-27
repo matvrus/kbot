@@ -25,7 +25,7 @@ image:
 
 push:
 	docker push ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
-	
+
 pushdoc:
 	docker push ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH}
 
@@ -34,4 +34,4 @@ imagedoc:
 
 clean:
 	rm -rf kbot
-	docker rmi ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
+	docker rmi ${REGISTRY}:${VERSION}-${OS}-${ARCH}
