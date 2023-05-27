@@ -1,1 +1,1 @@
-![Image](docs/workingschema.jpg)
+![Image](https://github.com/matvrus/kbot/blob/develop/docs/workingschema.jpg)
