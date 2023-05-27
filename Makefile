@@ -27,10 +27,10 @@ push:
 	docker push ${REGISTRY}/${APP}:${VERSION}-$(TARGETOS)-${TARGETARCH}
 	
 pushdoc:
-	docker push $(REGISTRYDOC)/$(APP):$(VERSION)-$(TARGETOS)-$(TARGETARCH)
+	docker push ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH}
 
 imagedoc:
-	docker build . -t $(REGISTRYDOC)/$(APP):$(VERSION)-$(TARGETOS)-$(TARGETARCH) --build-arg CGO_ENABLED= --build-arg TARGETARCH=$(TARGETARCH) --build-arg TARGETOS=$(TARGETOS)
+	docker build . -t ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH} --build-arg CGO_ENABLED=${CGO_ENABLED} --build-arg TARGETARCH=${ARCH} --build-arg TARGETOS=${TOS}
 
 clean:
 	rm -rf kbot
