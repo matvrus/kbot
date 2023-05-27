@@ -18,4 +18,4 @@ version: helm
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "v1.0.0-675cbd8 echo REPOSITORY=matvrus echo VER_NUM=v1.0.0 echo VERSION=v1.0.0-675cbd8"
+appVersion: "v1.0.0-61f6a1f echo REPOSITORY=matvrus echo VER_NUM=v1.0.0 echo VERSION=v1.0.0-61f6a1f"
