@@ -40,7 +40,7 @@ jobs:
         env:
           APP: "kbot"
           REGISTRYDOC: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: make make image push ARCH=$ARCH REGISTRY=$REGISTRY
+        run: make image push ARCH=$ARCH REGISTRY=$REGISTRY
 
       - name: Clean
         run: make clean TARGETARCH=$TARGETARCH
