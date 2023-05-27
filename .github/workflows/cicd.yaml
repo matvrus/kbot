@@ -11,7 +11,7 @@ env:
   REPOSITORY: ${{ github.actor }} # matvrus
   TARGETOS: linux #linux darwin windows
   TARGETARCH: amd64 #amd64 arm64
-  HELM_CHART: helm
+  HELM_CHART: 1.0.0 #helm chart version
   GH_TOKEN: ${{ secrets.GIT_TOKEN }}
 
 jobs:
