@@ -6,7 +6,7 @@ replicaCount: 1
 image:
   repository: minyax
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.0.1-eef731a"
+  tag: "v1.0.0-c64af5f"
   os: linux
   arch: amd64
 secret:
