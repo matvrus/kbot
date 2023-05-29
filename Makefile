@@ -24,7 +24,7 @@ image:
 	docker build . -t ${REGISTRY}:${VERSION}-$(TARGETOS)-${TARGETARCH} 
 
 push:
-	docker push ${REGISTRY}/${APP}:${VERSION}-$(TARGETOS)-${TARGETARCH}
+	docker push ${REGISTRY}:${VERSION}-$(TARGETOS)-${TARGETARCH}
 	
 pushdoc:
 	docker push ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH}
