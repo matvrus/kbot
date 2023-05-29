@@ -6,8 +6,9 @@ replicaCount: 1
 image:
   registry: "ghcr.io"
   repository: "matvrus/kbot"
-  tag: "v1.0.5-b95a501"
+  tag: "v1.0.0-7f42a32"
   arch: "amd64"
+  os: linux
 secret:
   name: "kbot"
   env: "TELE_TOKEN"
