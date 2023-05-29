@@ -5,15 +5,12 @@
 replicaCount: 1
 image:
   registry: "ghcr.io"
-  repository: "matvrus"
-  tag: "v1.0.0-8f45541 echo REPOSITORY=matvrus echo VER_NUM=v1.0.0 echo VERSION=v1.0.0-8f45541"
-  os: linux
+  repository: "matvrus/kbot"
+  tag: "v1.0.0-aac59f3"
   arch: amd64
 secret:
   name: "kbot"
-  env: "TELE_TOKEN"
-  key: "token"
-service:
-  port: 80
+  tokenKey: "token"
+  tokenName: "TELE_TOKEN"
 securityContext:
   privileged: true

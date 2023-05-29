@@ -1,9 +1,9 @@
-APP :=$(shell basename $(shell git remote get-url origin))
+APP := $(shell basename $(shell git remote get-url origin))
 REGISTRY := matvrus
-REPOSITORY := $(shell git remote get-url origin | cut -d/ -f4)
-VERSION=$(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
-TARGETOS=linux #linux darwin windows
-TARGETARCH :=$(shell dpkg --print-architecture)#arm64 amd64 arm64 
+#REGISTRYDOC := matvrus
+VERSION := $(shell git describe --tags --abbrev=0)-$(shell git rev-parse --short HEAD)
+TARGETOS := linux
+TARGETARCH := $(shell dpkg --print-architecture) #amd64 #arm64 
 
 format:
 	gofmt -s -w ./
@@ -18,13 +18,20 @@ get:
 	go get
 
 build: format get
-	CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -v -o kbot -ldflags "-X="github.com/matvrus/kbot/cmd.appVersion=${VERSION}
+	CGO_ENABLED=0 GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build -v -o kbot -ldflags "-X=github.com/matvrus/kbot/cmd.appVersion=$(VERSION)"
 
 image:
-	docker build . -t ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}  --build-arg TARGETARCH=${TARGETARCH}
+	docker build . -t ${REGISTRY}:${VERSION}-$(TARGETOS)-${TARGETARCH} 
+
 push:
-	docker push ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
+	docker push ${REGISTRY}:${VERSION}-$(TARGETOS)-${TARGETARCH}
+	
+pushdoc:
+	docker push ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH}
+
+imagedoc:
+	docker build . -t ${REGISTRYDOC}/${APP}:${VERSION}-${OS}-${ARCH} --build-arg CGO_ENABLED=${CGO_ENABLED} --build-arg TARGETARCH=${ARCH} --build-arg TARGETOS=${TOS}
 
 clean:
 	rm -rf kbot
-	docker rmi ${REGISTRY}/${APP}:${VERSION}-${TARGETARCH}
+	docker rmi $(REGISTRYDOC)/$(APP):$(VERSION)-$(TARGETOS)-$(TARGETARCH) || true

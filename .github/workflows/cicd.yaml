@@ -3,23 +3,17 @@ name: KBOT-CICD
 on:
   push:
     branches:
-      - "develop"
+      - develop
 
 env:
-  APP: kbot
-  REGISTRY: ghcr.io
-  REPOSITORY: ${{ github.actor }} # matvrus
-  TARGETOS: linux #linux darwin windows
-  TARGETARCH: amd64 #amd64 arm64
-  HELM_CHART: 1.0.0 #helm chart version
-  GH_TOKEN: ${{ secrets.GIT_TOKEN }}
+  ARCH: amd64
+  OS: linux
+  REGISTRY:  ghcr.io/${{ github.repository }}
 
 jobs:
   ci:
     name: CI
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
 
     steps:
       - name: Checkout
@@ -30,30 +24,18 @@ jobs:
       - name: Run test
         run: make test
 
-      - name: Docker Hub login
+      - name: GitHub Container login
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ env.REPOSITORY }}
-          password: ${{ secrets.GIT_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build&Push
-        env:
-          APP: ${{ env.APP }}
-          REGISTRY: ${{ env.REGISTRY }}
-          REPOSITORY: ${{ env.REPOSITORY }}
-          TARGETOS: ${{ env.TARGETOS }}
-          TARGETARCH: ${{ env.TARGETARCH }}
-        run: make image push
+        run: make image push ARCH=$ARCH REGISTRY=$REGISTRY
 
       - name: Clean
-        run: make clean TARGETARCH=$TARGETARCH
+        run: make clean ARCH=$ARCH REGISTRY=$REGISTRY
 
   cd:
     name: CD
@@ -61,26 +43,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set env.repository to lowercase
-      run: echo "REPOSITORY=${REPOSITORY,,}" >> $GITHUB_ENV
-    - run: 
-        echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-        echo "REPOSITORY=${REPOSITORY,,}" >> $GITHUB_ENV
-        echo "VER_NUM=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV 
-        echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
+      - run: echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-    - uses: mikefarah/yq@master
-      with:
-        cmd: |
-          yq -i '.image.registry=strenv(REGISTRY) | .image.repository=strenv(REPOSITORY) | .image.tag=strenv(VERSION) | .image.os=strenv(TARGETOS) | .image.arch=strenv(TARGETARCH)' helm/values.yaml
-          yq -i '.appVersion=strenv(VERSION) | .version=strenv(HELM_CHART)' helm/Chart.yaml
-    - run: |
-        git config user.name github-actions
-        git config user.email github-actions@github.com
-        git add docs/$APP-$HELM_CHART.tgz
-        git commit --allow-empty -am "update version $VERSION"
-        git push
+      - uses: mikefarah/yq@master
+        with:
+          cmd: yq -i '.image.tag=strenv(VERSION) | .image.os=strenv(OS) | .image.arch=strenv(ARCH)' helm/values.yaml
+
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -am "update version ${VERSION}"
+          git push
