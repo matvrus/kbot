@@ -5,7 +5,7 @@
 replicaCount: 1
 image:
   repository: matvrus
-  # Overrides the image tag whose default is the chart appVersion.
+
   tag: "v1.0.0-489b2b0"
   os: linux
   arch: amd64
