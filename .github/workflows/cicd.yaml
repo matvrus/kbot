@@ -3,7 +3,9 @@ name: KBOT-CICD
 on: push
 
 env:
-  TARGETARCH: amd64
+  ARCH: amd64
+  OS: linux
+  REGISTRY:  ghcr.io/${{ github.repository }}
 
 jobs:
   ci:
@@ -18,18 +20,19 @@ jobs:
 
       - name: Run test
         run: make test
-      - name: Docker Hub login
+
+      - name: GitHub Container login
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build&Push
-        env:
-          APP: "kbot"
-          REGISTRY: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: make image push TARGETARCH=$TARGETARCH
+        run: make image push ARCH=$ARCH REGISTRY=$REGISTRY
+
       - name: Clean
-        run: make clean TARGETARCH=$TARGETARCH
+        run: make clean ARCH=$ARCH REGISTRY=$REGISTRY
 
   cd:
     name: CD
@@ -37,16 +40,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - run: echo "VERION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-    - uses: mikefarah/yq@master
-      with:
-        cmd: yq -i '.image.tag=strenv(VERSION) | .image.arch=strenv(TARGETARCH)' helm/values.yaml
-    - run: |
-        git config user.name github-actions
-        git config user.email github-actions@github.com
-        git commit --allow-empty -am "update version $VERSION"
-        git push
+      - run: echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - uses: mikefarah/yq@master
+        with:
+          cmd: yq -i '.image.tag=strenv(VERSION) | .image.os=strenv(OS) | .image.arch=strenv(ARCH)' helm/values.yaml
+
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit --allow-empty -m "update version $VERSION"
+          git push
