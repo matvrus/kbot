@@ -4,7 +4,7 @@
 
 replicaCount: 1
 image:
-  repository: minyax
+  repository: matvrus
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v1.0.0-c64af5f"
   os: linux
