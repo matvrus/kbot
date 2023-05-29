@@ -4,13 +4,14 @@
 
 replicaCount: 1
 image:
-  registry: "ghcr.io"
-  repository: "matvrus/kbot"
-  tag: "v1.0.0-aac59f3"
+  repository: matvrus
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "v1.0.0-3db332d"
+  os: linux
   arch: amd64
 secret:
   name: "kbot"
-  tokenKey: "token"
-  tokenName: "TELE_TOKEN"
+  env: "TELE_TOKEN"
+  key: "token"
 securityContext:
   privileged: true
