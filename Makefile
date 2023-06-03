@@ -35,3 +35,4 @@ imagedoc:
 clean:
 	rm -rf kbot
 	docker rmi $(REGISTRYDOC)/$(APP):$(VERSION)-$(TARGETOS)-$(TARGETARCH) || true
+#comment
