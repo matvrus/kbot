@@ -4,8 +4,9 @@
 replicaCount: 1
 image:
   repository: "matvrus"
-  tag: "v1.0.0-3807ab2"
+  tag: "v1.0.0-0cda31e"
   arch: "amd64"
+  os: linux
 secret:
   name: "kbot"
   env: "TELE_TOKEN"
