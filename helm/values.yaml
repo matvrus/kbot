@@ -4,7 +4,7 @@
 replicaCount: 1
 image:
   repository: "matvrus"
-  tag: "v1.0.0-0cda31e"
+  tag: "v1.0.0-f73ddd1"
   arch: "amd64"
   os: linux
 secret:
