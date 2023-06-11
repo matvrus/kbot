@@ -27,14 +27,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-<<<<<<< HEAD
-          volumeMounts:
-            - mountPath: /dev/mem
-              name: dev-mem
-          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}/{{ .Chart.Name }}:{{ .Values.image.tag | default .Chart.AppVersion }}-{{ .Values.image.os | default "linux" }}-{{ .Values.image.arch | default "amd64" }}
-=======
           image: "{{ .Values.image.repository }}/{{ .Chart.Name }}:{{ .Values.image.tag | default .Chart.AppVersion }}-{{ .Values.image.os | default "linux"}}-{{ .Values.image.arch | default "amd64"}}"
->>>>>>> 9c8126da36600660cd1ca603c8494087226ba28b
           env:
           - name: {{ .Values.secret.env }}
             valueFrom:
