@@ -1,14 +1,6 @@
 name: KBOT-CICD
 
-on:
-  push:
-    branches:
-      - main
-
-env:
-  ARCH: amd64
-  OS: linux
-  REGISTRY:  ghcr.io/${{ github.repository }}
+on: push
 
 jobs:
   ci:
@@ -21,21 +13,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run test
+      - name: Run tests
         run: make test
 
-      - name: GitHub Container login
+      - name: DockerHub login
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build&Push
-        run: make image push ARCH=$ARCH REGISTRY=$REGISTRY
-
-      - name: Clean
-        run: make clean ARCH=$ARCH REGISTRY=$REGISTRY
+      - name: Build & Push
+        env:
+          APP: "kbot"
+          REGISTRY: ${{ secrets.DOCKERHUB_USERNAME  }}
+        run: make image push
 
   cd:
     name: CD
@@ -43,18 +34,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - run: echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-      - run: echo "VERSION=$(git describe --tags --abbrev=0)-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-      - uses: mikefarah/yq@master
-        with:
-          cmd: yq -i '.image.tag=strenv(VERSION) | .image.os=strenv(OS) | .image.arch=strenv(ARCH)' helm/values.yaml
-
-      - run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git commit -am "update version ${VERSION}"
-          git push
+    - uses: mikefarah/yq@master
+      with:
+        cmd: yq -i '.image.tag=strenv(VERSION)' helm/values.yaml
+        
+    - run: |
+        git config user.name github-actions
+        git config user.email github-actions@hithub.com
+        git commit -am "Update version $VERSION"
+        git push
