@@ -11,6 +11,9 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	"github.com/hirosassa/zerodriver"
 	"go.opentelemetry.io/otel"
@@ -19,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	telebot "gopkg.in/telebot.v3"
+	
 )
 
 var (
