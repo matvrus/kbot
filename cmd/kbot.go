@@ -60,18 +60,19 @@ func HandleTelegramCommand(m telebot.Context) error {
 		err := m.Send(fmt.Sprintf("Hello, %s! 😊 I'm Kbot %s!", m.Sender().FirstName, appVersion))
 		return err
 	case "/help":
-		helpText := "Доступні команди:\n" +
+		err := m.Send("Доступні команди:\n" +
 			"/hello - Привітання\n" +
 			"/help - Довідка\n" +
 			"/echo - Ехо-відповідь\n" +
 			"/time - Поточний час\n" +
-			"/weather - Погода в Україні"
-		err := m.Send(helpText)
+			"/weather - Погода в Україні")
 		return err
+
 	case "/echo":
 		text := m.Text()
 		err := m.Send(text)
 		return err
+		
 	case "/time":
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
 		err := m.Send(fmt.Sprintf("Поточний час: %s ⌚", currentTime))
