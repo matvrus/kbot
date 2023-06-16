@@ -1,6 +1,3 @@
-/*
-Copyright © 2023 NAME HERE den.vasyliev@gmail.com
-*/
 package cmd
 
 import (
@@ -29,7 +26,6 @@ var (
 
 // Initialize OpenTelemetry
 func initMetrics(ctx context.Context) {
-
 	// Create a new OTLP Metric gRPC exporter with the specified endpoint and options
 	exporter, _ := otlpmetricgrpc.New(
 		ctx,
@@ -38,7 +34,6 @@ func initMetrics(ctx context.Context) {
 	)
 
 	// Define the resource with attributes that are common to all metrics.
-	// labels/tags/resources that are common to all metrics.
 	resource := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceNameKey.String(fmt.Sprintf("kbot_%s", appVersion)),
@@ -48,25 +43,43 @@ func initMetrics(ctx context.Context) {
 	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(resource),
 		sdkmetric.WithReader(
-			// collects and exports metric data every 10 seconds.
 			sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(10*time.Second)),
 		),
 	)
 
 	// Set the global MeterProvider to the newly created MeterProvider
 	otel.SetMeterProvider(mp)
-
 }
 
-func pmetrics(ctx context.Context, payload string) {
-	// Get the global MeterProvider and create a new Meter with the name "kbot_light_signal_counter"
-	meter := otel.GetMeterProvider().Meter("kbot_light_signal_counter")
+// HandleTelegramCommand handles different commands received from Telegram
+func HandleTelegramCommand(m telebot.Context) error {
+	payload := m.Message().Payload
 
-	// Get or create an Int64Counter instrument with the name "kbot_light_signal_<payload>"
-	counter, _ := meter.Int64Counter(fmt.Sprintf("kbot_light_signal_%s", payload))
-
-	// Add a value of 1 to the Int64Counter
-	counter.Add(ctx, 1)
+	switch payload {
+	case "hello":
+		err := m.Send(fmt.Sprintf("Hello, %s! 😊 I'm Kbot %s!", m.Sender().FirstName, appVersion))
+		return err
+	case "/help":
+		helpText := "Доступні команди:\n" +
+			"/hello - Привітання\n" +
+			"/help - Довідка\n" +
+			"/echo - Ехо-відповідь\n" +
+			"/time - Поточний час\n" +
+			"/weather - Погода в Україні"
+		err := m.Send(helpText)
+		return err
+	case "/echo":
+		text := m.Text()
+		err := m.Send(text)
+		return err
+	case "/time":
+		currentTime := time.Now().Format("2006-01-02 15:04:05")
+		err := m.Send(fmt.Sprintf("Поточний час: %s ⌚", currentTime))
+		return err
+	default:
+		err := m.Send("Не розумію вашої команди. Введіть /help для довідки. 😕")
+		return err
+	}
 }
 
 // kbotCmd represents the kbot command
@@ -94,39 +107,9 @@ to quickly create a Cobra application.`,
 			return
 		} else {
 			logger.Info().Str("Version", appVersion).Msg("kbot started")
-
 		}
 
-		kbot.Handle(telebot.OnText, func(m telebot.Context) error {
-			logger.Info().Str("Payload", m.Text()).Msg(m.Message().Payload)
-
-			payload := m.Message().Payload
-			pmetrics(context.Background(), payload)
-
-			switch payload {
-			case "hello":
-				err = m.Send(fmt.Sprintf("Hello I'm Kbot %s!", appVersion))
-			case "help":
-				err = m.Send("I can help you with the following commands:\n\n"+
-					"/hello - I will say hello to you\n"+
-					"/help - I will show you this help message\n"+
-					"/version - I will show you my version\n"+
-					"/metrics - I will show you my metrics\n"+
-					"/stop - I will stop myself\n")
-			case "version":
-				err = m.Send(fmt.Sprintf("I'm Kbot %s!", appVersion))
-			case "metrics":
-				err = m.Send(fmt.Sprintf("I'm Kbot %s!", appVersion))
-			case "stop":
-				err = m.Send(fmt.Sprintf("I'm Kbot %s!", appVersion))
-			default:
-				err = m.Send(fmt.Sprintf("I don't know what to do with %s!", payload))
-				
-			}
-
-			return err
-
-		})
+		kbot.Handle(telebot.OnText, HandleTelegramCommand)
 
 		kbot.Start()
 	},
@@ -148,5 +131,4 @@ func init() {
 	// kbotCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	// Initialize OpenTelemetry tracer
-
 }
