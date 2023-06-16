@@ -1,32 +1,28 @@
 /*
 Copyright © 2023 NAME HERE lapin@ucu.edu.ua
 */
-
 package cmd
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
 	"os"
 	"time"
 
+	"github.com/spf13/cobra"
+
+	"github.com/hirosassa/zerodriver"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	"github.com/spf13/cobra"
-	telebot "gopkg.in/tucnak/telebot.v2"
+	telebot "gopkg.in/telebot.v3"
 )
 
 var (
-	// Telegram bot token
-	TeleToken = os.Getenv("TELE_TOKEN")
-	// OpenWeatherMap API key
-	WeatherAPIKey = os.Getenv("WEATHER_API_KEY")
+	// TeleToken bot
+	TeleToken   = os.Getenv("TELE_TOKEN")
 	// MetricsHost exporter host:port
 	MetricsHost = os.Getenv("METRICS_HOST")
 )
@@ -35,27 +31,42 @@ var (
 func initMetrics(ctx context.Context) {
 
 	// Create a new OTLP Metric gRPC exporter with the specified endpoint and options
-	exporter, err := otlpmetricgrpc.New(
+	exporter, _ := otlpmetricgrpc.New(
 		ctx,
 		otlpmetricgrpc.WithEndpoint(MetricsHost),
 		otlpmetricgrpc.WithInsecure(),
 	)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// Define the resource with attributes that are common to all metrics.
+	// labels/tags/resources that are common to all metrics.
 	resource := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceNameKey.String(fmt.Sprintf("kbot_%s", appVersion)),
 	)
 
-	// Create a new MeterProvider with the specified resource and exporter
+	// Create a new MeterProvider with the specified resource and reader
 	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(resource),
-		sdkmetric.WithSyncer(exporter),
+		sdkmetric.WithReader(
+				// collects and exports metric data every 10 seconds.
+				sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(10*time.Second)),
+		),
 	)
+
+	// Set the global MeterProvider to the newly created MeterProvider
 	otel.SetMeterProvider(mp)
+
+}
+
+func pmetrics(ctx context.Context, payload string) {
+	// Get the global MeterProvider and create a new Meter with the name "kbot_light_signal_counter"
+	meter := otel.GetMeterProvider().Meter("kbot_light_signal_counter")
+
+	// Get or create an Int64Counter instrument with the name "kbot_light_signal_<payload>"
+	counter, _ := meter.Int64Counter(fmt.Sprintf("kbot_light_signal_%s", payload))
+
+	// Add a value of 1 to the Int64Counter
+	counter.Add(ctx, 1)
 }
 
 // kbotCmd represents the kbot command
@@ -70,61 +81,62 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		logger := log.New(os.Stdout, "", log.LstdFlags)
+		logger := zerodriver.NewProductionLogger()
 
-		ctx := context.Background()
-		initMetrics(ctx)
-
-		logger.Printf("kbot %s started\n", appVersion)
-
-		bot, err := telebot.NewBot(telebot.Settings{
+		kbot, err := telebot.NewBot(telebot.Settings{
+			URL:    "",
 			Token:  TeleToken,
 			Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
 		})
+
 		if err != nil {
-			logger.Fatalf("Please check TELE_TOKEN env variable. %s", err)
+			logger.Fatal().Str("Error", err.Error()).Msg("Please check TELE_TOKEN")
+			return
+		} else {
+			logger.Info().Str("Version", appVersion).Msg("kbot started")
+
 		}
 
-		bot.Handle(telebot.OnText, func(m *telebot.Message) error {
-			logger.Println(m.Payload, m.Text)
+		trafficSignal := make(map[string]map[string]int8)
 
-			switch m.Text {
+		trafficSignal["red"] = make(map[string]int8)
+		trafficSignal["amber"] = make(map[string]int8)
+		trafficSignal["green"] = make(map[string]int8)
+
+		trafficSignal["red"]["pin"] = 12
+		trafficSignal["amber"]["pin"] = 27
+		trafficSignal["green"]["pin"] = 22
+
+		kbot.Handle(telebot.OnText, func(m telebot.Context) error {
+			logger.Info().Str("Payload", m.Text()).Msg(m.Message().Payload)
+
+			payload := m.Message().Payload
+			pmetrics(context.Background(), payload)
+
+			switch payload {
 			case "hello":
-				err := bot.Send(m.Sender, "world")
-				if err != nil {
-					logger.Println("Error:", err)
+				err = m.Send(fmt.Sprintf("Hello I'm Kbot %s!", appVersion))
+
+			case "red", "amber", "green":
+
+				if trafficSignal[payload]["on"] == 0 {
+					trafficSignal[payload]["on"] = 1
+				} else {
+					trafficSignal[payload]["on"] = 0
 				}
-			case "/start":
-				helpText := "Доступні команди:\n" +
-					"/start - Початок роботи\n" +
-						"/help - Довідка\n" +
-						"/echo - Ехо-відповідь\n" +
-						"/time - Поточний час\n" +
-						"/weather - Погода в Україні"
-				err = bot.Send(m.Sender, helpText)
-			case "/help":
-				helpText := "Доступні команди:\n" +
-					"/help - Довідка\n" +
-						"/echo - Ехо-відповідь\n" +
-						"/time - Поточний час\n" +
-						"/weather - Погода в Україні"
-				err = bot.Send(m.Sender, helpText)
-			case "/echo":
-				text := m.Text
-				err = bot.Send(m.Sender, text)
-			case "/time":
-				currentTime := time.Now().Format("2006-01-02 15:04:05")
-				err = bot.Send(m.Sender, fmt.Sprintf("Поточний час: %s ⌚", currentTime))
-			case "/weather":
-				err = getWeather(bot, m)
+
+				err = m.Send(fmt.Sprintf("Switch %s light signal to %d", payload, trafficSignal[payload]["on"]))
+
 			default:
-				err = bot.Send(m.Sender, "Не розумію вашої команди. Введіть /help для довідки. 😕")
+				err = m.Send("Usage: /s red|amber|green")
+
 			}
 
 			return err
+
 		})
 
-		bot.Start()
+		kbot.Start()
 	},
 }
 
@@ -142,40 +154,7 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// kbotCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
 
-func getWeather(bot *telebot.Bot, m *telebot.Message) error {
-	cityPrompt := telebot.NewTextRequest("Введіть назву міста в Україні, для якого ви хочете дізнатися погоду: 😊🌤️")
-	cityResp := bot.Send(m.Sender, cityPrompt)
+	// Initialize OpenTelemetry tracer
 
-	cityName := ""
-
-	for cityResp.Next() {
-		cityName = cityResp.Text()
-		break
-	}
-
-	if cityName == "" {
-		return nil
-	}
-
-	weatherURL := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?q=%s,ua&appid=%s&units=metric", cityName, WeatherAPIKey)
-	weatherResp, err := http.Get(weatherURL)
-	if err != nil {
-		return err
-	}
-	defer weatherResp.Body.Close()
-
-	_, err = ioutil.ReadAll(weatherResp.Body)
-	if err != nil {
-		return err
-	}
-
-	return bot.Send(m.Sender, "Отримано інформацію про погоду для міста "+cityName+"! 🌤️")
-}
-
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
-	}
 }
