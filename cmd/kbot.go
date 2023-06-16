@@ -1,21 +1,17 @@
 /*
-Copyright © 2023 NAME HERE lapin@ucu.edu.ua
+Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 */
-
 package cmd
-
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/hirosassa/zerodriver"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -24,80 +20,98 @@ import (
 	telebot "gopkg.in/telebot.v3"
 )
 
-// ...
+var (
+	// Telegram bot token
+	TeleToken = os.Getenv("TELE_TOKEN")
+	// MetricsHost exporter host:port
+	MetricsHost = os.Getenv("METRICS_HOST")
+)
 
-type WeatherResponse struct {
-	Weather []Weather `json:"weather"`
-	Main    Main      `json:"main"`
-}
-
-type Weather struct {
-	Description string `json:"description"`
-}
-
-type Main struct {
-	Temperature float64 `json:"temp"`
-	Pressure    float64 `json:"pressure"`
-	Humidity    float64 `json:"humidity"`
-}
-
-// ...
-
-func getWeather(m telebot.Context) error {
-	msg := m.Message()
-	cityPrompt := telebot.NewTextRequest("Введіть назву міста в Україні, для якого ви хочете дізнатися погоду: 😊🌤️")
-	cityResp := m.Send(msg.Sender(), cityPrompt)
-
-	cityName := ""
-
-	for cityResp.Next() {
-		cityName = cityResp.Text()
-		break
-	}
-
-	if cityName == "" {
-		return nil
-	}
-
-	weatherURL := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?q=%s,ua&appid=%s&units=metric", cityName, WeatherAPIKey)
-	weatherResp, err := http.Get(weatherURL)
+// Initialize OpenTelemetry for metrics
+func initMetrics(ctx context.Context) {
+	// Create a new OTLP Metric gRPC exporter with the specified endpoint and options
+	exporter, err := otlpmetricgrpc.New(
+		ctx,
+		otlpmetricgrpc.WithEndpoint(MetricsHost),
+		otlpmetricgrpc.WithInsecure(),
+	)
 	if err != nil {
-		return err
-	}
-	defer weatherResp.Body.Close()
-
-	weatherData, err := ioutil.ReadAll(weatherResp.Body)
-	if err != nil {
-		return err
-	}
-
-	weather, err := parseWeatherData(weatherData)
-	if err != nil {
-		return err
-	}
-
-	weatherDescription := ""
-	if len(weather.Weather) > 0 {
-		weatherDescription = weather.Weather[0].Description
-	}
-
-	responseText := fmt.Sprintf("Погода для міста %s:\nТемпература: %.1f°C\nТиск: %.1f гПа\nВологість: %.1f%%\nОпис: %s",
-		cityName, weather.Main.Temperature, weather.Main.Pressure, weather.Main.Humidity, weatherDescription)
-
-	return m.Send(msg.Sender(), responseText)
-}
-
-func parseWeatherData(weatherData []byte) (*WeatherResponse, error) {
-	var response WeatherResponse
-	err := json.Unmarshal(weatherData, &response)
-	if err != nil {
-		return nil, err
-	}
-	return &response, nil
-}
-
-func main() {
-	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+
+	// Define the resource with attributes that are common to all metrics.
+	resourceAttributes := []attribute.KeyValue{
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String(fmt.Sprintf("kbot_%s", appVersion)),
+	}
+
+	resource := resource.NewWithAttributes(resourceAttributes...)
+
+	// Create a new MeterProvider with the specified resource and exporter
+	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(resource),
+		sdkmetric.WithBatcher(exporter),
+	)
+
+	// Register the provider globally
+	otel.SetMeterProvider(provider)
+}
+
+// kbotCmd represents the kbot command
+var kbotCmd = &cobra.Command{
+	Use:     "kbot",
+	Aliases: []string{"start"},
+	Short:   "A brief description of your command",
+	Long: `A longer description that spans multiple lines and likely contains examples
+and usage of using your command. For example:
+
+Cobra is a CLI library for Go that empowers applications.
+This application is a tool to generate the needed files
+to quickly create a Cobra application.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx := context.Background()
+		initMetrics(ctx)
+
+		fmt.Println("kbot %s started", appVersion)
+		kbot, err := telebot.NewBot(telebot.Settings{
+			URL:    "",
+			Token:  TeleToken,
+			Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
+		})
+
+		if err != nil {
+			log.Fatalf("Please check TELE_TOKEN env variable. %s", err)
+			return
+		}
+
+		kbot.Handle(telebot.OnText, func(m telebot.Context) error {
+			log.Print(m.Message().Payload, m.Text())
+			payload := m.Message().Payload
+
+			switch payload {
+			case "hello":
+				err = m.Send(fmt.Sprintf("Hello, %s! I'm Kbot %s!", m.Sender().FirstName, appVersion))
+			}
+
+			return err
+		})
+
+		kbot.Start()
+	},
+}
+
+func init() {
+	ctx := context.Background()
+	initMetrics(ctx)
+	rootCmd.AddCommand(kbotCmd)
+
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// kbotCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// kbotCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
