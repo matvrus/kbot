@@ -13,13 +13,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/hirosassa/zerodriver"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	telebot "gopkg.in/telebot.v3"
+	telebot "gopkg.in/tucnak/telebot.v3"
 )
 
 var (
@@ -50,10 +49,10 @@ func initMetrics(ctx context.Context) {
 		semconv.ServiceNameKey.String(fmt.Sprintf("kbot_%s", appVersion)),
 	)
 
-	// Create a new MeterProvider with the specified resource and reader
+	// Create a new MeterProvider with the specified resource and exporter
 	mp := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(resource),
-		sdkmetric.WithBatcher(exporter),
+		sdkmetric.WithSyncer(exporter),
 	)
 	otel.SetMeterProvider(mp)
 }
@@ -77,8 +76,7 @@ to quickly create a Cobra application.`,
 
 		logger.Printf("kbot %s started\n", appVersion)
 
-		kbot, err := telebot.NewBot(telebot.Settings{
-			URL:    "",
+		bot, err := telebot.NewBot(telebot.Settings{
 			Token:  TeleToken,
 			Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
 		})
@@ -86,37 +84,46 @@ to quickly create a Cobra application.`,
 			logger.Fatalf("Please check TELE_TOKEN env variable. %s", err)
 		}
 
-		kbot.Handle(telebot.OnText, func(m telebot.Context) error {
-			logger.Println(m.Message().Payload, m.Text())
-			payload := m.Message().Payload
+		bot.Handle(telebot.OnText, func(m *telebot.Message) error {
+			logger.Println(m.Payload, m.Text)
 
-			switch payload {
+			switch m.Text {
 			case "hello":
-				err = m.Send(fmt.Sprintf("Hello, %s! 😊 I'm Kbot %s!", m.Sender().FirstName, appVersion))
-			case "/help":
+				err := m.Reply("world")
+				if err != nil {
+					logger.Println("Error:", err)
+				}
+			case "/start":
 				helpText := "Доступні команди:\n" +
-					"/hello - Привітання\n" +
+					"/start - Початок роботи\n" +
 					"/help - Довідка\n" +
 					"/echo - Ехо-відповідь\n" +
 					"/time - Поточний час\n" +
 					"/weather - Погода в Україні"
-				err = m.Send(helpText)
+				err = m.Reply(helpText)
+			case "/help":
+				helpText := "Доступні команди:\n" +
+					"/help - Довідка\n" +
+					"/echo - Ехо-відповідь\n" +
+					"/time - Поточний час\n" +
+					"/weather - Погода в Україні"
+				err = m.Reply(helpText)
 			case "/echo":
-				text := m.Text()
-				err = m.Send(text)
+				text := m.Text
+				err = m.Reply(text)
 			case "/time":
 				currentTime := time.Now().Format("2006-01-02 15:04:05")
-				err = m.Send(fmt.Sprintf("Поточний час: %s ⌚", currentTime))
+				err = m.Reply(fmt.Sprintf("Поточний час: %s ⌚", currentTime))
 			case "/weather":
 				err = getWeather(m)
 			default:
-				err = m.Send("Не розумію вашої команди. Введіть /help для довідки. 😕")
+				err = m.Reply("Не розумію вашої команди. Введіть /help для довідки. 😕")
 			}
 
 			return err
 		})
 
-		kbot.Start()
+		bot.Start()
 	},
 }
 
@@ -138,8 +145,9 @@ func init() {
 
 func getWeather(m telebot.Context) error {
 	msg := m.Message()
+
 	cityPrompt := telebot.NewTextRequest("Введіть назву міста в Україні, для якого ви хочете дізнатися погоду: 😊🌤️")
-	cityResp := m.Send(msg.Sender(), cityPrompt)
+	cityResp := m.Send(msg.Sender, cityPrompt)
 
 	cityName := ""
 
@@ -159,14 +167,12 @@ func getWeather(m telebot.Context) error {
 	}
 	defer weatherResp.Body.Close()
 
-	weatherData, err := ioutil.ReadAll(weatherResp.Body)
+	_, err = ioutil.ReadAll(weatherResp.Body)
 	if err != nil {
 		return err
 	}
 
-	// TODO: Parse weatherData and extract relevant weather information
-
-	return m.Send(msg.Sender(), "Отримано інформацію про погоду для міста "+cityName+"! 🌤️")
+	return m.Send(msg.Sender, "Отримано інформацію про погоду для міста "+cityName+"! 🌤️")
 }
 
 func main() {
