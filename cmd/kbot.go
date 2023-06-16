@@ -18,7 +18,8 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	telebot "gopkg.in/telebot.v3"
+	"github.com/spf13/cobra"
+	telebot "gopkg.in/tucnak/telebot.v2"
 )
 
 var (
@@ -89,35 +90,35 @@ to quickly create a Cobra application.`,
 
 			switch m.Text {
 			case "hello":
-				err := m.Reply("world")
+				err := bot.Send(m.Sender, "world")
 				if err != nil {
 					logger.Println("Error:", err)
 				}
 			case "/start":
 				helpText := "Доступні команди:\n" +
 					"/start - Початок роботи\n" +
-					"/help - Довідка\n" +
-					"/echo - Ехо-відповідь\n" +
-					"/time - Поточний час\n" +
-					"/weather - Погода в Україні"
-				err = m.Reply(helpText)
+						"/help - Довідка\n" +
+						"/echo - Ехо-відповідь\n" +
+						"/time - Поточний час\n" +
+						"/weather - Погода в Україні"
+				err = bot.Send(m.Sender, helpText)
 			case "/help":
 				helpText := "Доступні команди:\n" +
 					"/help - Довідка\n" +
-					"/echo - Ехо-відповідь\n" +
-					"/time - Поточний час\n" +
-					"/weather - Погода в Україні"
-				err = m.Reply(helpText)
+						"/echo - Ехо-відповідь\n" +
+						"/time - Поточний час\n" +
+						"/weather - Погода в Україні"
+				err = bot.Send(m.Sender, helpText)
 			case "/echo":
 				text := m.Text
-				err = m.Reply(text)
+				err = bot.Send(m.Sender, text)
 			case "/time":
 				currentTime := time.Now().Format("2006-01-02 15:04:05")
-				err = m.Reply(fmt.Sprintf("Поточний час: %s ⌚", currentTime))
+				err = bot.Send(m.Sender, fmt.Sprintf("Поточний час: %s ⌚", currentTime))
 			case "/weather":
-				err = getWeather(m)
+				err = getWeather(bot, m)
 			default:
-				err = m.Reply("Не розумію вашої команди. Введіть /help для довідки. 😕")
+				err = bot.Send(m.Sender, "Не розумію вашої команди. Введіть /help для довідки. 😕")
 			}
 
 			return err
@@ -143,11 +144,9 @@ func init() {
 	// kbotCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func getWeather(m telebot.Context) error {
-	msg := m.Message()
-
+func getWeather(bot *telebot.Bot, m *telebot.Message) error {
 	cityPrompt := telebot.NewTextRequest("Введіть назву міста в Україні, для якого ви хочете дізнатися погоду: 😊🌤️")
-	cityResp := m.Send(msg.Sender, cityPrompt)
+	cityResp := bot.Send(m.Sender, cityPrompt)
 
 	cityName := ""
 
@@ -172,7 +171,7 @@ func getWeather(m telebot.Context) error {
 		return err
 	}
 
-	return m.Send(msg.Sender, "Отримано інформацію про погоду для міста "+cityName+"! 🌤️")
+	return bot.Send(m.Sender, "Отримано інформацію про погоду для міста "+cityName+"! 🌤️")
 }
 
 func main() {
