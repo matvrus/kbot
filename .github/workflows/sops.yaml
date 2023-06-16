@@ -1,0 +1,33 @@
+#The secret manifest is generated and encrypted using the GitHub Actions pipeline, and the token is stored in GCP Secret Manager.
+name: sops
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  sops:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install sops
+        run: |
+          curl -s https://github.com/mozilla/sops/releases/download/v3.7.1/sops-v3.7.1.linux -o sops
+          chmod +x ./sops
+          sudo mv ./sops /usr/local/bin/sops
+      - name: Decrypt secrets
+        run: |
+          sops -d --extract '["data"]["token"]' .github/workflows/secrets.yaml > token
+          gcloud auth activate-service-account --key-file=token
+          gcloud secrets versions access latest --secret=github-token > github-token
+          sops -d --extract '["data"]["token"]' .github/workflows/secrets.yaml > token
+          gcloud auth activate-service-account --key-file=token
+          gcloud secrets versions access latest --secret=github-token > github-token
+      - name: Set up git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "  github-actions[bot]@users.noreply.github.com"
+      - name: Decrypt secrets
+      
