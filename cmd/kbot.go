@@ -18,7 +18,7 @@ import (
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
-	telebot "gopkg.in/tucnak/telebot.v3"
+	telebot "gopkg.in/telebot.v3"
 )
 
 var (
