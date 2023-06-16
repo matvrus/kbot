@@ -1,17 +1,21 @@
 /*
 Copyright © 2023 NAME HERE lapin@ucu.edu.ua
 */
+
 package cmd
+
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
-
-	"github.com/hirosassa/zerodriver"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -20,141 +24,80 @@ import (
 	telebot "gopkg.in/telebot.v3"
 )
 
-var (
-	// TeleToken bot
-	TeleToken   = os.Getenv("TELE_TOKEN")
-	// MetricsHost exporter host:port
-	MetricsHost = os.Getenv("METRICS_HOST")
-)
+// ...
 
-// Initialize OpenTelemetry
-func initMetrics(ctx context.Context) {
-
-	// Create a new OTLP Metric gRPC exporter with the specified endpoint and options
-	exporter, _ := otlpmetricgrpc.New(
-		ctx,
-		otlpmetricgrpc.WithEndpoint(MetricsHost),
-		otlpmetricgrpc.WithInsecure(),
-	)
-
-	// Define the resource with attributes that are common to all metrics.
-	// labels/tags/resources that are common to all metrics.
-	resource := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.ServiceNameKey.String(fmt.Sprintf("kbot_%s", appVersion)),
-	)
-
-	// Create a new MeterProvider with the specified resource and reader
-	mp := sdkmetric.NewMeterProvider(
-		sdkmetric.WithResource(resource),
-		sdkmetric.WithReader(
-				// collects and exports metric data every 10 seconds.
-				sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(10*time.Second)),
-		),
-	)
-
-	// Set the global MeterProvider to the newly created MeterProvider
-	otel.SetMeterProvider(mp)
-
+type WeatherResponse struct {
+	Weather []Weather `json:"weather"`
+	Main    Main      `json:"main"`
 }
 
-func pmetrics(ctx context.Context, payload string) {
-	// Get the global MeterProvider and create a new Meter with the name "kbot_light_signal_counter"
-	meter := otel.GetMeterProvider().Meter("kbot_light_signal_counter")
-
-	// Get or create an Int64Counter instrument with the name "kbot_light_signal_<payload>"
-	counter, _ := meter.Int64Counter(fmt.Sprintf("kbot_light_signal_%s", payload))
-
-	// Add a value of 1 to the Int64Counter
-	counter.Add(ctx, 1)
+type Weather struct {
+	Description string `json:"description"`
 }
 
-// kbotCmd represents the kbot command
-var kbotCmd = &cobra.Command{
-	Use:     "kbot",
-	Aliases: []string{"start"},
-	Short:   "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		logger := zerodriver.NewProductionLogger()
-
-		kbot, err := telebot.NewBot(telebot.Settings{
-			URL:    "",
-			Token:  TeleToken,
-			Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
-		})
-
-		if err != nil {
-			logger.Fatal().Str("Error", err.Error()).Msg("Please check TELE_TOKEN")
-			return
-		} else {
-			logger.Info().Str("Version", appVersion).Msg("kbot started")
-
-		}
-
-		trafficSignal := make(map[string]map[string]int8)
-
-		trafficSignal["red"] = make(map[string]int8)
-		trafficSignal["amber"] = make(map[string]int8)
-		trafficSignal["green"] = make(map[string]int8)
-
-		trafficSignal["red"]["pin"] = 12
-		trafficSignal["amber"]["pin"] = 27
-		trafficSignal["green"]["pin"] = 22
-
-		kbot.Handle(telebot.OnText, func(m telebot.Context) error {
-			logger.Info().Str("Payload", m.Text()).Msg(m.Message().Payload)
-
-			payload := m.Message().Payload
-			pmetrics(context.Background(), payload)
-
-			switch payload {
-			case "hello":
-				err = m.Send(fmt.Sprintf("Hello I'm Kbot %s!", appVersion))
-
-			case "red", "amber", "green":
-
-				if trafficSignal[payload]["on"] == 0 {
-					trafficSignal[payload]["on"] = 1
-				} else {
-					trafficSignal[payload]["on"] = 0
-				}
-
-				err = m.Send(fmt.Sprintf("Switch %s light signal to %d", payload, trafficSignal[payload]["on"]))
-
-			default:
-				err = m.Send("Usage: /s red|amber|green")
-
-			}
-
-			return err
-
-		})
-
-		kbot.Start()
-	},
+type Main struct {
+	Temperature float64 `json:"temp"`
+	Pressure    float64 `json:"pressure"`
+	Humidity    float64 `json:"humidity"`
 }
 
-func init() {
-	ctx := context.Background()
-	initMetrics(ctx)
-	rootCmd.AddCommand(kbotCmd)
+// ...
 
-	// Here you will define your flags and configuration settings.
+func getWeather(m telebot.Context) error {
+	msg := m.Message()
+	cityPrompt := telebot.NewTextRequest("Введіть назву міста в Україні, для якого ви хочете дізнатися погоду: 😊🌤️")
+	cityResp := m.Send(msg.Sender(), cityPrompt)
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// kbotCmd.PersistentFlags().String("foo", "", "A help for foo")
+	cityName := ""
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// kbotCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	for cityResp.Next() {
+		cityName = cityResp.Text()
+		break
+	}
 
-	// Initialize OpenTelemetry tracer
+	if cityName == "" {
+		return nil
+	}
 
+	weatherURL := fmt.Sprintf("http://api.openweathermap.org/data/2.5/weather?q=%s,ua&appid=%s&units=metric", cityName, WeatherAPIKey)
+	weatherResp, err := http.Get(weatherURL)
+	if err != nil {
+		return err
+	}
+	defer weatherResp.Body.Close()
+
+	weatherData, err := ioutil.ReadAll(weatherResp.Body)
+	if err != nil {
+		return err
+	}
+
+	weather, err := parseWeatherData(weatherData)
+	if err != nil {
+		return err
+	}
+
+	weatherDescription := ""
+	if len(weather.Weather) > 0 {
+		weatherDescription = weather.Weather[0].Description
+	}
+
+	responseText := fmt.Sprintf("Погода для міста %s:\nТемпература: %.1f°C\nТиск: %.1f гПа\nВологість: %.1f%%\nОпис: %s",
+		cityName, weather.Main.Temperature, weather.Main.Pressure, weather.Main.Humidity, weatherDescription)
+
+	return m.Send(msg.Sender(), responseText)
+}
+
+func parseWeatherData(weatherData []byte) (*WeatherResponse, error) {
+	var response WeatherResponse
+	err := json.Unmarshal(weatherData, &response)
+	if err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatal(err)
+	}
 }
