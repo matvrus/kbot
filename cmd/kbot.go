@@ -57,30 +57,41 @@ func HandleTelegramCommand(m telebot.Context) error {
 
 	switch payload {
 	case "hello":
-		err := m.Send(fmt.Sprintf("Hello, %s! 😊 I'm Kbot %s!", m.Sender().FirstName, appVersion))
+		err := m.Send(fmt.Sprintf("Hello, I'm Kbot %s!", appVersion))
 		return err
 	case "/help":
-		err := m.Send("Доступні команди:\n" +
+		helpText := "Доступні команди:\n" +
 			"/hello - Привітання\n" +
 			"/help - Довідка\n" +
 			"/echo - Ехо-відповідь\n" +
 			"/time - Поточний час\n" +
-			"/weather - Погода в Україні")
+			"/weather - Погода в Україні"
+		err := m.Send(helpText)
 		return err
-
 	case "/echo":
 		text := m.Text()
 		err := m.Send(text)
 		return err
-		
 	case "/time":
 		currentTime := time.Now().Format("2006-01-02 15:04:05")
 		err := m.Send(fmt.Sprintf("Поточний час: %s ⌚", currentTime))
+		return err
+	case "/weather":
+		weatherText := getWeather()
+		err := m.Send(weatherText)
 		return err
 	default:
 		err := m.Send("Не розумію вашої команди. Введіть /help для довідки. 😕")
 		return err
 	}
+}
+
+// getWeather видає актуальну інформацію про погоду в Україні
+func getWeather() string {
+	// Реалізуйте логіку отримання погоди тут
+	// Поверніть актуальну інформацію про погоду у форматі string
+	weatherText := "Погода в Україні: сонячно 🌞"
+	return weatherText
 }
 
 // kbotCmd represents the kbot command
